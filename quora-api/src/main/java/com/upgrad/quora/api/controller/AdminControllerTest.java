@@ -1,46 +1,47 @@
 package com.upgrad.quora.api.controller;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import com.upgrad.quora.api.model.UserDeleteResponse;
+import com.upgrad.quora.service.business.AdminService;
+import com.upgrad.quora.service.entity.UserEntity;
+import com.upgrad.quora.service.exception.AuthorizationFailedException;
+import com.upgrad.quora.service.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@AutoConfigureMockMvc
-
+@RestController
+@RequestMapping("/")
 public class AdminControllerTest {
 
     @Autowired
-    private MockMvc mvc;
+    private AdminService adminService;
 
-    //This test case passes when you try to delete the user but the JWT token entered does not exist in the database.
-    @Test
-    public void deleteWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/admin/user/database_uuid4").header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
-    }
-    //This test case passes when you try to delete the user but the role of the user corresponding to the JWT token entered is nonadmin.
-    @Test
-    public void deleteWithnonadminAsRole() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/admin/user/database_uuid4").header("authorization", "database_accesstoken1"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-003"));
-    }
-    //This test case passes when you try to delete the user which does not exist in the database.
-    @Test
-    public void deleteNonExistingUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/admin/user/non_existing_user_uuid").header("authorization", "database_accesstoken"))
-                .andExpect(status().isNotFound())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("USR-001"));
+    /**
+     * Get the user details provided the userId.
+     *
+     * @param userId      user id of the user whose details has to be fetched.
+     * @param accessToken Access token to authenticate the user who is requesting for user details.
+     * @return
+     * @throws AuthorizationFailedException - if the access token is invalid or already logged out or
+     *                                      user is not an admin or user with enetered uuid does not exist
+     * @throws UserNotFoundException        - if the user with given id is not present in the records.
+     */
+    @RequestMapping(
+            method = RequestMethod.DELETE,
+            path = "/admin/user/{userId}",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<UserDeleteResponse> deleteUser(
+            @RequestHeader("authorization") final String accessToken,
+            @PathVariable("userId") String userId)
+            throws AuthorizationFailedException, UserNotFoundException {
+
+        UserEntity userEntity = adminService.deleteUser (userId, accessToken);
+
+        UserDeleteResponse userDeleteResponse =
+                new UserDeleteResponse ().id (userEntity.getUuid ()).status ("USER SUCCESSFULLY DELETED");
+
+        return new ResponseEntity<UserDeleteResponse> (userDeleteResponse, HttpStatus.OK);
     }
 }
-
