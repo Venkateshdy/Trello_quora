@@ -10,13 +10,14 @@ public enum GenericErrorCode implements ErrorCode {
      * <b>Cause:</b> This error could have occurred due to undetermined runtime errors.<br>
      * <b>Action: None</b><br>
      */
-    GEN_001("GEN-001", "An unexpected error occurred. Please contact System Administrator");
+    GEN_001 ("GEN-001", "An unexpected error occurred. Please contact System Administrator");
 
-    private static final Map<String, GenericErrorCode> LOOKUP = new HashMap<String, GenericErrorCode>();
+    private static final Map<String, GenericErrorCode> LOOKUP =
+            new HashMap<String, GenericErrorCode> ();
 
     static {
-        for (final GenericErrorCode enumeration : GenericErrorCode.values()) {
-            LOOKUP.put(enumeration.getCode(), enumeration);
+        for (final GenericErrorCode enumeration : GenericErrorCode.values ()) {
+            LOOKUP.put (enumeration.getCode (), enumeration);
         }
     }
 
@@ -38,5 +39,4 @@ public enum GenericErrorCode implements ErrorCode {
     public String getDefaultMessage() {
         return defaultMessage;
     }
-
 }

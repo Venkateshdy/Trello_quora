@@ -19,20 +19,21 @@ public class JwtTokenProvider {
     private final Algorithm algorithm;
 
     /**
-     * A constructor for JwtTokenProvider class which receives user password as an argument to be used in the signature part of JWT access token.
+     * A constructor for JwtTokenProvider class which receives user password as an argument to be used
+     * in the signature part of JWT access token.
      */
     public JwtTokenProvider(final String secret) {
         try {
-            algorithm = Algorithm.HMAC512(secret);
+            algorithm = Algorithm.HMAC512 (secret);
         } catch (IllegalArgumentException e) {
-            throw new UnexpectedException(GenericErrorCode.GEN_001);
+            throw new UnexpectedException (GenericErrorCode.GEN_001);
         }
     }
 
-
     /**
-     * This method receives uuid of the user, current time and expiry time of the access token.
-     * This information is stored in the payload of the JWT token and the JWT token is returned by this method.
+     * This method receives uuid of the user, current time and expiry time of the access token. This
+     * information is stored in the payload of the JWT token and the JWT token is returned by this
+     * method.
      */
     /**
      * @param userUuid        - uuid of the user
@@ -40,15 +41,20 @@ public class JwtTokenProvider {
      * @param expiresDateTime - expiry time of the JWT token
      * @return - generated JWT token
      */
-    public String generateToken(final String userUuid, final ZonedDateTime issuedDateTime, final ZonedDateTime expiresDateTime) {
+    public String generateToken(
+            final String userUuid,
+            final ZonedDateTime issuedDateTime,
+            final ZonedDateTime expiresDateTime) {
 
-        final Date issuedAt = new Date(issuedDateTime.getLong(ChronoField.INSTANT_SECONDS));
-        final Date expiresAt = new Date(expiresDateTime.getLong(ChronoField.INSTANT_SECONDS));
+        final Date issuedAt = new Date (issuedDateTime.getLong (ChronoField.INSTANT_SECONDS));
+        final Date expiresAt = new Date (expiresDateTime.getLong (ChronoField.INSTANT_SECONDS));
 
-        return JWT.create().withIssuer(TOKEN_ISSUER) //
-                .withKeyId(UUID.randomUUID().toString())
-                .withAudience(userUuid) //
-                .withIssuedAt(issuedAt).withExpiresAt(expiresAt).sign(algorithm);
+        return JWT.create ()
+                .withIssuer (TOKEN_ISSUER) //
+                .withKeyId (UUID.randomUUID ().toString ())
+                .withAudience (userUuid) //
+                .withIssuedAt (issuedAt)
+                .withExpiresAt (expiresAt)
+                .sign (algorithm);
     }
-
 }

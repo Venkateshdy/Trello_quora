@@ -1,6 +1,5 @@
 package com.upgrad.quora.service.common;
 
-
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.MessageFormat;
@@ -16,13 +15,14 @@ public class UnexpectedException extends RuntimeException {
     private final Object[] parameters;
 
     public UnexpectedException(final ErrorCode errorCode, final Object... parameters) {
-        super();
+        super ();
         this.errorCode = errorCode;
         this.parameters = parameters;
     }
 
-    public UnexpectedException(final ErrorCode errorCode, final Throwable cause, final Object... parameters) {
-        super();
+    public UnexpectedException(
+            final ErrorCode errorCode, final Throwable cause, final Object... parameters) {
+        super ();
         this.errorCode = errorCode;
         this.cause = cause;
         this.parameters = parameters;
@@ -34,7 +34,7 @@ public class UnexpectedException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return MessageFormat.format(errorCode.getDefaultMessage(), this.parameters);
+        return MessageFormat.format (errorCode.getDefaultMessage (), this.parameters);
     }
 
     @Override
@@ -44,12 +44,11 @@ public class UnexpectedException extends RuntimeException {
 
     @Override
     public final void printStackTrace(final PrintStream stream) {
-        super.printStackTrace(stream);
+        super.printStackTrace (stream);
     }
 
     @Override
     public final void printStackTrace(final PrintWriter writer) {
-        super.printStackTrace(writer);
+        super.printStackTrace (writer);
     }
-
 }

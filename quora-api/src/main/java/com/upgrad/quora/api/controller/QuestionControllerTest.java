@@ -1,136 +1,151 @@
 package com.upgrad.quora.api.controller;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import com.upgrad.quora.api.model.*;
+import com.upgrad.quora.service.business.QuestionBusinessService;
+import com.upgrad.quora.service.entity.QuestionEntity;
+import com.upgrad.quora.service.exception.AuthorizationFailedException;
+import com.upgrad.quora.service.exception.InvalidQuestionException;
+import com.upgrad.quora.service.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.ArrayList;
+import java.util.List;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@AutoConfigureMockMvc
-
+@RestController
+@RequestMapping("/")
 public class QuestionControllerTest {
 
-    @Autowired
-    private MockMvc mvc;
+    @Autowired private QuestionBusinessService questionService;
 
-    //This test case passes when you try to create the question but the JWT token entered does not exist in the database.
-    @Test
-    public void createQuestionWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.post("/question/create?content=my_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
+    /**
+     * Create a question
+     *
+     * @param questionRequest This object has the content i.e the question.
+     * @param accessToken access token to authenticate user.
+     * @return UUID of the question created in DB.
+     * @throws AuthorizationFailedException In case the access token is invalid.
+     */
+    @RequestMapping(
+            method = RequestMethod.POST,
+            path = "/question/create",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<QuestionResponse> createQuestion(
+            @RequestHeader("authorization") final String accessToken, QuestionRequest questionRequest)
+            throws AuthorizationFailedException {
+        QuestionEntity questionEntity = new QuestionEntity();
+        questionEntity.setContent(questionRequest.getContent());
+        questionEntity = questionService.createQuestion(questionEntity, accessToken);
+        QuestionResponse questionResponse = new QuestionResponse();
+        questionResponse.setId(questionEntity.getUuid());
+        questionResponse.setStatus("QUESTION CREATED");
+        return new ResponseEntity<QuestionResponse>(questionResponse, HttpStatus.CREATED);
     }
-    //This test case passes when you try to create the question but the user corresponding to the JWT token entered is signed out of the application.
-    @Test
-    public void createQuestionWithSignedOutUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.post("/question/create?content=my_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "database_accesstoken3"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-002"));
+
+    /**
+     * Get all questions posted by any user.
+     *
+     * @param accessToken access token to authenticate user.
+     * @return List of QuestionDetailsResponse
+     * @throws AuthorizationFailedException In case the access token is invalid.
+     */
+    @RequestMapping(
+            method = RequestMethod.GET,
+            path = "/question/all",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<List<QuestionDetailsResponse>> getAllQuestions(
+            @RequestHeader("authorization") final String accessToken)
+            throws AuthorizationFailedException {
+        List<QuestionEntity> questions = questionService.getAllQuestions(accessToken);
+        List<QuestionDetailsResponse> questionDetailResponses = new ArrayList<>();
+        for (QuestionEntity questionEntity : questions) {
+            QuestionDetailsResponse questionDetailResponse = new QuestionDetailsResponse();
+            questionDetailResponse.setId(questionEntity.getUuid());
+            questionDetailResponse.setContent(questionEntity.getContent());
+            questionDetailResponses.add(questionDetailResponse);
+        }
+        return new ResponseEntity<List<QuestionDetailsResponse>>(
+                questionDetailResponses, HttpStatus.OK);
     }
-    //This test case passes when you try to get the detail of all the questions and the JWT token entered exists in the database and the user corresponding to that JWT token is signed in.
-    @Test
-    public void getAllQuestions() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all").header("authorization", "database_accesstoken1"))
-                .andExpect(status().isOk());
+
+    /**
+     * Edit a question
+     *
+     * @param accessToken access token to authenticate user.
+     * @param questionId id of the question to be edited.
+     * @param questionEditRequest new content for the question.
+     * @return Id and status of the question edited.
+     * @throws AuthorizationFailedException In case the access token is invalid.
+     * @throws InvalidQuestionException if question with questionId doesn't exist.
+     */
+    @RequestMapping(
+            method = RequestMethod.PUT,
+            path = "/question/edit/{questionId}",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<QuestionEditResponse> editQuestion(
+            @RequestHeader("authorization") final String accessToken,
+            @PathVariable("questionId") final String questionId,
+            QuestionEditRequest questionEditRequest)
+            throws AuthorizationFailedException, InvalidQuestionException {
+        QuestionEntity questionEntity =
+                questionService.editQuestion(accessToken, questionId, questionEditRequest.getContent());
+        QuestionEditResponse questionEditResponse = new QuestionEditResponse();
+        questionEditResponse.setId(questionEntity.getUuid());
+        questionEditResponse.setStatus("QUESTION EDITED");
+        return new ResponseEntity<QuestionEditResponse>(questionEditResponse, HttpStatus.OK);
     }
-    //This test case passes when you try to get the detail of all the questions but the JWT token entered does not exist in the database.
-    @Test
-    public void getAllQuestionsWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all").header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
+
+    /**
+     * Delete a question
+     *
+     * @param accessToken access token to authenticate user.
+     * @param questionId id of the question to be edited.
+     * @return Id and status of the question deleted.
+     * @throws AuthorizationFailedException In case the access token is invalid.
+     * @throws InvalidQuestionException if question with questionId doesn't exist.
+     */
+    @RequestMapping(method = RequestMethod.DELETE, path = "/question/delete/{questionId}")
+    public ResponseEntity<QuestionDeleteResponse> deleteQuestion(
+            @RequestHeader("authorization") final String accessToken,
+            @PathVariable("questionId") final String questionId)
+            throws AuthorizationFailedException, InvalidQuestionException {
+
+        QuestionEntity questionEntity = questionService.deleteQuestion(accessToken, questionId);
+        QuestionDeleteResponse questionDeleteResponse = new QuestionDeleteResponse();
+        questionDeleteResponse.setId(questionEntity.getUuid());
+        questionDeleteResponse.setStatus("QUESTION DELETED");
+        return new ResponseEntity<QuestionDeleteResponse>(questionDeleteResponse, HttpStatus.OK);
     }
-    //This test case passes when you try to get the detail of all the questions and the JWT token entered exists in the database but the user corresponding to that JWT token is signed out.
-    @Test
-    public void getAllQuestionsWithSignedOutUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all").header("authorization", "database_accesstoken3"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-002"));
-    }
-    //This test case passes when you try to edit the question but the JWT token entered does not exist in the database.
-    @Test
-    public void editQuestionWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.put("/question/edit/database_question_uuid?content=edited_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
-    }
-    //This test case passes when you try to edit the question and the JWT token entered exists in the database but the user corresponding to that JWT token is signed out.
-    @Test
-    public void editQuestionWithWithSignedOutUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.put("/question/edit/database_question_uuid?content=edited_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "database_accesstoken3"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-002"));
-    }
-    //This test case passes when you try to edit the question and the JWT token entered exists in the database and the user corresponding to that JWT token is signed in but the corresponding user is not the owner of the question.
-    @Test
-    public void editQuestionWithoutOwnership() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.put("/question/edit/database_question_uuid?content=edited_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "database_accesstoken"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-003"));
-    }
-    //This test case passes when you try to edit the question which does not exist in the database.
-    @Test
-    public void editNonExistingQuestion() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.put("/question/edit/non_exisitng_question_uuid?content=edited_question").contentType(MediaType.APPLICATION_JSON_UTF8_VALUE).header("authorization", "database_accesstoken1"))
-                .andExpect(status().isNotFound())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("QUES-001"));
-    }
-    //This test case passes when you try to delete the question but the JWT token entered does not exist in the database.
-    @Test
-    public void deleteQuestionWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/question/delete/database_question_uuid").header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
-    }
-    //This test case passes when you try to delete the question and the JWT token entered exists in the database but the user corresponding to that JWT token is signed out.
-    @Test
-    public void deleteQuestionWithSignedOutUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/question/delete/database_question_uuid").header("authorization", "database_accesstoken3"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-002"));
-    }
-    //This test case passes when you try to delete the question and the JWT token entered exists in the database and the user corresponding to that JWT token is signed in but the corresponding user is not the owner of the question or he is not the admin.
-    @Test
-    public void deleteQuestionWithoutOwnership() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/question/delete/database_question_uuid").header("authorization", "database_accesstoken2"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-003"));
-    }
-    //This test case passes when you try to delete the question which does not exist in the database.
-    @Test
-    public void deleteNoneExistingQuestion() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.delete("/question/delete/non_existing_question_uuid").header("authorization", "database_accesstoken1"))
-                .andExpect(status().isNotFound())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("QUES-001"));
-    }
-    //This test case passes when you try to get all the questions posted by a specific user but the JWT token entered does not exist in the database.
-    @Test
-    public void getAllQuestionsByUserWithNonExistingAccessToken() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all/database_uuid1").header("authorization", "non_existing_access_token"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-001"));
-    }
-    //This test case passes when you try to get all the questions posted by a specific user and the JWT token entered exists in the database but the user corresponding to that JWT token is signed out.
-    @Test
-    public void getAllQuestionsByUserWithSignedOutUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all/database_uuid1").header("authorization", "database_accesstoken3"))
-                .andExpect(status().isForbidden())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("ATHR-002"));
-    }
-    //This test case passes when you try to get all the questions posted by a specific user which does not exist in the database.
-    @Test
-    public void getAllQuestionsForNonExistingUser() throws Exception {
-        mvc.perform(MockMvcRequestBuilders.get("/question/all/non_existing_user_uuid").header("authorization", "database_accesstoken1"))
-                .andExpect(status().isNotFound())
-                .andExpect(MockMvcResultMatchers.jsonPath("code").value("USR-001"));
+
+    /**
+     * Get all questions posted by a user with given userId.
+     *
+     * @param userId of the user for whom we want to see the questions asked by him
+     * @param accessToken access token to authenticate user.
+     * @return List of QuestionDetailsResponse
+     * @throws AuthorizationFailedException In case the access token is invalid.
+     */
+    @RequestMapping(
+            method = RequestMethod.GET,
+            path = "question/all/{userId}",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<List<QuestionDetailsResponse>> getQuestionByUserId(
+            @RequestHeader("authorization") final String accessToken,
+            @PathVariable("userId") String userId)
+            throws AuthorizationFailedException, UserNotFoundException {
+
+        List<QuestionEntity> questions = questionService.getAllQuestionsByUser(userId, accessToken);
+        List<QuestionDetailsResponse> questionDetailResponses = new ArrayList<>();
+        for (QuestionEntity questionEntity : questions) {
+            QuestionDetailsResponse questionDetailResponse = new QuestionDetailsResponse();
+            questionDetailResponse.setId(questionEntity.getUuid());
+            questionDetailResponse.setContent(questionEntity.getContent());
+            questionDetailResponses.add(questionDetailResponse);
+        }
+        return new ResponseEntity<List<QuestionDetailsResponse>>(
+                questionDetailResponses, HttpStatus.OK);
     }
 }

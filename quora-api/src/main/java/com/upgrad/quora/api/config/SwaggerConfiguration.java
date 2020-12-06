@@ -1,6 +1,5 @@
 package com.upgrad.quora.api.config;
 
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import springfox.documentation.builders.PathSelectors;
@@ -18,6 +17,10 @@ public class SwaggerConfiguration {
 
     @Bean
     public Docket swagger() {
-        return new Docket(DocumentationType.SWAGGER_2).select().apis(RequestHandlerSelectors.basePackage("com.upgrad.quora.api.controller")).paths(PathSelectors.any()).build();
+        return new Docket (DocumentationType.SWAGGER_2)
+                .select ()
+                .apis (RequestHandlerSelectors.basePackage ("com.upgrad.quora.api.controller"))
+                .paths (PathSelectors.any ())
+                .build ();
     }
 }
